@@ -1,18 +1,108 @@
-# N24News
- 
-This is the code for our paper [N24News: A New Dataset for Multimodal News Classification](https://aclanthology.org/2022.lrec-1.729),
-which has been accepted by the 13th Conference on Language Resources and Evaluation (LREC 2022).
+# Assignment 1 - Classification
 
-## Build complete dataset
+## 1. Folder Structure
 
-The build_fully_dataset.py can be used to download the complete version
-of N24News. Place nytimes_dataset.json in the same place and run the py file.
+```text
+.
+|-- config.yaml
+|-- few_shot.py
+|-- zero_shot.py
+|-- requirements.txt
+|-- README.md
+|-- data/
+|   |-- imgs/
+|   \-- news/
+|       |-- nytimes_dataset.json
+|       |-- nytimes_train.json
+|       |-- nytimes_dev.json
+|       |-- nytimes_test.json
+|       \-- ...
+|-- outputs/
+|   \-- best_model.pth
+\-- __pycache__/
+```
 
-Once finished, the images will be stored in the 'images' folder and the name 
-of images correspond to the 'image_id' in the json file.
+Meanings:
+- data/news: chua cac file json dataset va cac split train/dev/test.
+- data/imgs: chua anh tuong ung image_id trong json.
+- outputs: luu checkpoint mo hinh (few-shot).
+- config.yaml: cau hinh duong dan du lieu, model, thong so train va runtime.
 
-And here is the direct download link for N24News in Google Drive https://drive.google.com/file/d/1OS1fXwZ1Vsj70lEQajccyssxQRYp5X9D/view?usp=share_link
+## 2. Set up Libraries
 
-And the Baidu Cloud link is https://pan.baidu.com/s/1wb6-9IrydjAi03_P3l0u9w 提取码: qaib
+Requirements:
+- Python 3.9+ 
 
-Please use this bib to cite our paper if you use N24News in your paper.
+Create and activate virtual environment (Windows PowerShell):
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+Libraries install:
+
+```powershell
+pip install -r requirements.txt
+```
+
+## 3. Data Config
+
+Kiem tra file config.yaml, toi thieu cac muc sau phai dung voi may cua ban:
+- paths.data_path
+- paths.train_path
+- paths.val_path
+- paths.test_path
+- paths.images_dir
+
+Mac dinh project dang de:
+- data_path: data/news/nytimes_dataset.json
+- train_path: data/news/nytimes_train.json
+- val_path: data/news/nytimes_dev.json
+- test_path: data/news/nytimes_test.json
+- images_dir: data/imgs
+
+## 4. Chay zero-shot
+
+Lenh chay:
+
+```powershell
+python zero_shot.py
+```
+
+Script se:
+- Doc toan bo mau tu file paths.data_path.
+- Tao prompt theo danh sach labels trong config.yaml.
+- Su dung CLIP de du doan nhan tu anh.
+- In cac chi so: Accuracy, Precision macro, Recall macro, F1 macro, F1 weighted.
+
+Tuy chon nhanh trong config.yaml:
+- runtime.max_samples: gioi han so mau de test nhanh.
+- runtime.batch_size: batch cho infer.
+- runtime.cls_report: bat/tat classification report tung lop.
+
+## 5. Chay few-shot
+
+Lenh chay:
+
+```powershell
+python few_shot.py
+```
+
+Script se:
+- Doc train/dev/test theo cac duong dan split trong config.yaml.
+- Lay mau few-shot theo runtime.shots_per_class tren train split.
+- Huan luyen mo hinh ket hop Vision Transformer + RoBERTa.
+- Luu checkpoint tot nhat vao training.save_path (mac dinh outputs/best_model.pth).
+- Nap checkpoint tot nhat va danh gia tren test split.
+
+Thong so hay dieu chinh trong config.yaml:
+- runtime.shots_per_class
+- training.epochs
+- training.batch_size
+- training.lr
+- training.save_path
+
+## 6. Tham khao dataset
+
+N24News paper: https://aclanthology.org/2022.lrec-1.729
