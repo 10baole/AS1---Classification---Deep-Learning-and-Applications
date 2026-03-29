@@ -1,0 +1,17 @@
+project:
+  name: mit-indoor-67
+  seed: 42
+
+paths:
+  raw_images_dir: ../../data/indoorCVPR_09/Images
+  split_dir: ../../data
+  processed_dir: artifacts/processed/mit_indoor_official
+  artifacts_dir: artifacts
+  models_dir: artifacts/models
+  reports_dir: artifacts/reports
+
+data:
+  image_size: 224
+
+inference:
+  checkpoint: artifacts/models/vit_layerwise_aug_best.pth
