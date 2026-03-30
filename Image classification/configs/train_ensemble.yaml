@@ -1,0 +1,8 @@
+train:
+  model_type: ensemble
+  fusion: concat
+  optimizer_mode: ensemble
+  experiment_name: ensemble_vit_resnet50
+
+inference:
+  checkpoint: artifacts/models/ensemble_vit_resnet50_best.pth

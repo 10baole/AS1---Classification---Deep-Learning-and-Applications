@@ -1,0 +1,7 @@
+train:
+  model_type: vit
+  optimizer_mode: layerwise
+  experiment_name: vit_layerwise_aug
+
+inference:
+  checkpoint: artifacts/models/vit_layerwise_aug_best.pth

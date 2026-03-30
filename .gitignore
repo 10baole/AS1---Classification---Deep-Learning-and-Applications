@@ -1,0 +1,45 @@
+# Artifacts & model weights
+Image classification/artifacts/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables & secrets
+.env
+.env.*
+
+# Data (datasets thường rất nặng)
+*.zip
+*.tar.gz
+*.h5
+*.hdf5
+data/
+
+# Model checkpoints & logs
+*.pt
+*.pth
+*.ckpt
+wandb/
+runs/
+logs/

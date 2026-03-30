@@ -1,0 +1,36 @@
+project:
+  name: mit-indoor-67
+  seed: 42
+
+paths:
+  raw_images_dir: ../../data/indoorCVPR_09/Images
+  split_dir: ../../data
+  processed_dir: artifacts/processed/mit_indoor_official
+  artifacts_dir: artifacts
+  models_dir: artifacts/models
+  reports_dir: artifacts/reports
+
+data:
+  train_split: train.txt
+  val_split: val.txt
+  test_split: test.txt
+  split_mode: copy
+  image_size: 224
+  num_workers: 0
+
+train:
+  batch_size: 32
+  epochs: 20
+  use_aug: true
+  use_oversampler: true
+  use_focal_loss: false
+  focal_gamma: 2.0
+  freeze_backbone: false
+  dropout: 0.1
+  label_smoothing: 0.1
+  head_lr: 0.0003
+  backbone_lr: 0.00001
+  layer_decay: 0.8
+  weight_decay: 0.05
+  patience: 5
+  min_delta: 0.0001

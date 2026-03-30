@@ -1,0 +1,7 @@
+train:
+  model_type: resnet50
+  optimizer_mode: full
+  experiment_name: resnet50_full_aug
+
+inference:
+  checkpoint: artifacts/models/resnet50_full_aug_best.pth
