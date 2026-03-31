@@ -59,8 +59,7 @@ class EnsembleClassifier(nn.Module):
         elif fusion == "weighted":
             self.vit_head = nn.Linear(hidden_dim, num_classes)
             self.resnet_head = nn.Linear(hidden_dim, num_classes)
-            if fusion == "weighted":
-                self.alpha_logit = nn.Parameter(torch.zeros(1))
+            self.alpha_logit = nn.Parameter(torch.zeros(1))
         else:
             raise ValueError(f"Unknown fusion strategy: {fusion}")
 
