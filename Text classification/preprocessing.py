@@ -227,9 +227,8 @@ def load_and_process_data(total_lines):
     except Exception:
         pbar = None
 
-    stats     = Counter()
-    conf_bins = Counter()
-    records   = []
+    stats = Counter()
+    records = []
 
     with open(INPUT_FILE, 'r', encoding='utf-8') as f:
         for line in f:
@@ -284,25 +283,10 @@ def load_and_process_data(total_lines):
                 continue
             stats[label] += 1
 
-            # Confidence: metadata = high, well-sourced opinion = medium, Other = low
-            high_conf = {'Property', 'Probate', 'Corporate', 'Court of Claims', 'Criminal'}
-            medium_conf = {'Civil'}
-            if label in high_conf:
-                conf = 0.8
-            elif label in medium_conf:
-                conf = 0.5
-            else:
-                conf = 0.3
-
-            ck = 'high' if conf >= 0.6 else ('medium' if conf >= 0.4 else 'low')
-            conf_bins[ck] += 1
-
             records.append({
-                'id':         case_id,
-                'text':       clean_body,
-                'label':      label,
-                'name':       name,
-                'confidence': conf,
+                'id': case_id,
+                'text': clean_body,
+                'label': label,
             })
             stats['total_processed'] += 1
 
@@ -321,12 +305,6 @@ def load_and_process_data(total_lines):
     for l in label_order:
         c = stats.get(l, 0)
         print(f"    {l:16s}: {c:6d}  ({100 * c / max(total_cls, 1):.1f}%)")
-
-    print(f"\n  Label confidence:")
-    total_conf = sum(conf_bins.values())
-    for k in ['high', 'medium', 'low']:
-        v = conf_bins.get(k, 0)
-        print(f"    {k:6s}: {v:6d}  ({100 * v / max(total_conf, 1):.1f}%)")
 
     return records
 
@@ -379,25 +357,15 @@ def save_outputs(train_df, val_df, test_df):
     with open(f"{OUTPUT_DIR}/class_weights.json", 'w') as f:
         json.dump(class_weights, f, indent=2)
 
-    conf_stats = {
-        split: {
-            'mean':          float(df['confidence'].mean()) if 'confidence' in df.columns else None,
-            'low_conf_pct':  float((df['confidence'] < 0.4).mean() * 100) if 'confidence' in df.columns else None,
-            'high_conf_pct': float((df['confidence'] >= 0.6).mean() * 100) if 'confidence' in df.columns else None,
-        }
-        for split, df in [('train', train_df), ('val', val_df), ('test', test_df)]
-    }
-
     split_info = {
-        'train_size':   len(train_df),
-        'val_size':     len(val_df),
-        'test_size':    len(test_df),
-        'num_classes':  len(le.classes_),
-        'classes':      list(le.classes_),
-        'random_seed':  RANDOM_SEED,
+        'train_size': len(train_df),
+        'val_size': len(val_df),
+        'test_size': len(test_df),
+        'num_classes': len(le.classes_),
+        'classes': list(le.classes_),
+        'random_seed': RANDOM_SEED,
         'max_text_len': MAX_TEXT_LEN,
         'min_text_len': MIN_TEXT_LEN,
-        'confidence_stats': conf_stats,
     }
     with open(f"{OUTPUT_DIR}/split_info.json", 'w') as f:
         json.dump(split_info, f, indent=2)
