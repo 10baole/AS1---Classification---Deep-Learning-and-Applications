@@ -23,7 +23,7 @@ import pandas as pd
 import numpy as np
 
 # ============ CONFIG ============
-INPUT_FILE  = "data-new-labeled/text.data.jsonl"
+INPUT_FILE  = "data/text.data.jsonl"
 OUTPUT_DIR  = "data/processed"
 RANDOM_SEED = 42
 MAX_TEXT_LEN = 15000
