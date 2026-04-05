@@ -405,7 +405,15 @@ class Evaluator:
                 all_labels.extend(labels.cpu().numpy())
 
         cm = confusion_matrix(all_labels, all_preds, labels=range(num_classes))
-        acc_per_class = [cm[i, i] / cm[i].sum() if cm[i].sum() > 0 else 0.0 for i in range(num_classes)]
+        total_samples = cm.sum()
+        ovr_acc_per_class = []
+        for i in range(num_classes):
+            tp = cm[i, i]
+            fn = cm[i, :].sum() - tp
+            fp = cm[:, i].sum() - tp
+            tn = total_samples - tp - fn - fp
+            ovr_acc_per_class.append((tp + tn) / total_samples if total_samples > 0 else 0.0)
+
         precision_per = precision_score(all_labels, all_preds, average=None, zero_division=0)
         recall_per = recall_score(all_labels, all_preds, average=None, zero_division=0)
         f1_per = f1_score(all_labels, all_preds, average=None, zero_division=0)
@@ -420,7 +428,7 @@ class Evaluator:
             'precision_per_class': precision_per,
             'recall_per_class': recall_per,
             'f1_per_class': f1_per,
-            'accuracy_per_class': acc_per_class,
+            'ovr_accuracy_per_class': ovr_acc_per_class,
             'all_preds': all_preds,
             'all_labels': all_labels,
         }
@@ -672,12 +680,12 @@ def main():
 
     print(f"  Accuracy: {test_metrics['accuracy']:.4f}")
     print(f"  Precision: {test_metrics['precision_macro']:.4f} | Recall: {test_metrics['recall_macro']:.4f} | F1: {test_metrics['f1_macro']:.4f}")
-    print(f"\n  {'Class':<20} {'Prec':>8} {'Rec':>8} {'F1':>8} {'Acc':>8}")
+    print(f"\n  {'Class':<20} {'Prec':>8} {'Rec':>8} {'F1':>8} {'OvR-Acc':>8}")
     print(f"  {'-'*52}")
     for i, name in enumerate(label_encoder.classes_):
         print(f"  {name:<20} {test_metrics['precision_per_class'][i]:>8.4f} "
               f"{test_metrics['recall_per_class'][i]:>8.4f} {test_metrics['f1_per_class'][i]:>8.4f} "
-              f"{test_metrics['accuracy_per_class'][i]:>8.4f}")
+              f"{test_metrics['ovr_accuracy_per_class'][i]:>8.4f}")
 
     print("\nClassification Report:")
     print(classification_report(test_labels_np, test_preds, target_names=label_encoder.classes_))
