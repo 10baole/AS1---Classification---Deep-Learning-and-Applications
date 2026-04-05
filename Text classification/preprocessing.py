@@ -2,18 +2,8 @@
 """
 Preprocessing script for Illinois Courts Case Law.
 
-Label logic (metadata-first, then opinion content):
-  1. Property        — foreclosure / ejectment / quiet title / partition (meta + opinion)
-                        + real estate disputes + landlord/tenant
-  2. Probate         — estate / decedent / executor / testate / intestate
-  3. Corporate       — shareholder / directors / corporation / partnership (opinion)
-  4. Court of Claims — court of claims
-  5. Criminal        — People v. + criminal keyword in opinion
-  6. Civil           — tort / contract / insurance / employment / bankruptcy /
-                        municipal / administrative / constitutional / civil rights
-  7. Other           — everything else (truly miscellaneous civil)
-
-Training text: opinion body starts AFTER "delivered the opinion of the court".
+This script keeps ORIGINAL labels from source JSONL (no relabeling).
+Training text is extracted from opinion body after removing header boilerplate.
 """
 
 import json, re, os, pickle, random, time
@@ -214,165 +204,9 @@ def clean_text(text, case_name=''):
 
 
 # ============================================================
-#  CLASSIFICATION
+#  LABEL SOURCE
 # ============================================================
-
-def _any(text, keywords):
-    return any(k in text for k in keywords)
-
-
-def _wb(text, keywords):
-    """Word-boundary match."""
-    import re
-    for kw in keywords:
-        if re.search(r'(?<![a-zA-Z])' + re.escape(kw) + r'(?![a-zA-Z])', text):
-            return True
-    return False
-
-
-def get_label(name, court_name, court_abbr, head_matter, opinion_lc):
-    """
-    7-class taxonomy for Illinois Courts case law:
-
-    1. Property        — ejectment, foreclosure, landlord/tenant, liens, easements
-    2. Probate         — estates, decedents, executors, testate/intestate
-    3. Corporate       — corporations, partnerships, shareholders, directors
-    4. Court of Claims  — Illinois Court of Claims
-    5. Criminal        — criminal cases (People v. or criminal keywords)
-    6. Civil           — torts, contracts, insurance, employment, bankruptcy,
-                          municipal, administrative, constitutional, civil rights
-    7. Other           — truly miscellaneous (mostly early-1800s generic disputes)
-    """
-    nm_lc    = name.lower()
-    hm_lc    = head_matter.lower()
-    court_lc = court_name.lower()
-    all_meta = nm_lc + ' ' + hm_lc
-    op       = opinion_lc[:3000]
-
-    # ── Court of Claims ──────────────────────────────────────
-    if 'court of claims' in court_lc or court_abbr == 'Ill. Ct. Cl.':
-        return 'Court of Claims'
-
-    # ── Property ──────────────────────────────────────────────
-    if _any(nm_lc, ('foreclosure', 'ejectment', 'quiet title',
-                    'partition', 'replevin', 'eviction')):
-        return 'Property'
-    if _any(op, (
-        'action of ejectment', 'action of replevin', 'quiet title',
-        'partition', 'partition of land', 'partition of property',
-        'vendor and vendee', 'vendee and vendor',
-        'easement', 'condemnation', 'eminent domain', 'adverse possession',
-        'quitclaim deed', 'deed of trust', 'trust deed',
-        'forcible entry', 'forcible detainer',
-        'right of way', 'subdivision', 'mechanic lien',
-        'real estate',
-        'dower',
-    )):
-        return 'Property'
-    if _wb(op, (
-        'landlord', 'landlords', 'lease', 'leases', 'leasehold',
-        'sublease', 'sublet', 'security deposit',
-    )):
-        return 'Property'
-
-    # ── Criminal ─────────────────────────────────────────────
-    # "people" phải đứng SAU "the " (name format: "The People v. Defendant")
-    # NOT "people" ở giữa (ex rel. = civil quyền công)
-    is_people = 'people' in nm_lc and (
-        nm_lc.startswith('people') or
-        nm_lc.startswith('the people') or
-        nm_lc.startswith('the city of')   # "The City of X v. Defendant" = city ordinance criminal
-    )
-    # "ex rel." = civil, không phải criminal
-    is_ex_rel = 'ex rel.' in nm_lc or 'ex relatione' in nm_lc
-
-    if is_people and not is_ex_rel and _any(op, (
-        'murder', 'robbery', 'burglary', 'assault', 'larceny',
-        'guilty plea', 'rape', 'escape', 'sentenced', 'kidnap',
-        'armed robbery', 'aggravated battery', 'sexual assault',
-        'homicide', 'forgery', 'arson', 'drug', 'conspiracy',
-        'perjury', 'riot', 'kidnapping', 'bribery', 'embezzlement',
-        'penitentiary', 'beyond reasonable doubt', 'indicted',
-        'probation revocation',
-    )):
-        return 'Criminal'
-    # Non-People criminal: chỉ khi có conviction language rõ ràng
-    if _any(op, (
-        'sentenced to', 'imprisoned', 'incarcerated',
-        'convicted of', 'found guilty of',
-        'first degree murder', 'second degree murder',
-        'armed robbery',
-    )):
-        return 'Criminal'
-
-    # ── Probate ───────────────────────────────────────────────
-    PROBATE_KWS = ('estate of', 'in re estate', 'decedent', 'testator',
-                   'executor', 'testate', 'probate')
-    if _any(nm_lc, PROBATE_KWS):
-        return 'Probate'
-    if ' in re ' in nm_lc and _any(hm_lc, ('estate', 'probate', 'decedent',
-                                              'testator', 'testate', 'intestate')):
-        return 'Probate'
-    if _any(op, ('estate of', 'executor', 'administrator', 'decedent',
-                 'testator', 'testate', 'intestate')):
-        return 'Probate'
-
-    # ── Corporate ────────────────────────────────────────────
-    # Chỉ keyword mạnh, KHÔNG generic keywords như "defendants"
-    if _any(op, (
-        'shareholder', 'shareholders', 'directors', 'officers',
-        'corporation', 'corporations',
-        'bylaws', 'merger', 'derivative action', 'receiver',
-        'dissolution of corporation', 'appraisal rights',
-        'partnership',
-        'quo warranto',
-    )):
-        return 'Corporate'
-
-    # ── Civil ────────────────────────────────────────────────
-    if _any(op, (
-        # Tort (including negligence, recover damages)
-        'personal injury', 'personal injuries', 'premises liability',
-        'medical malpractice', 'legal malpractice', 'wrongful death',
-        'assault and battery', 'negligence', 'negligent',
-        'action of trespass', 'action of slander', 'action in case',
-        'action of detinue', 'action of seduction', 'action of',
-        'recover damages', 'recovery of damages',
-        # Contract
-        'promissory note', 'breach of contract', 'indorser', 'endorser',
-        'indorsee', 'holder in due course', 'covenant', 'guaranty', 'surety',
-        'action of debt', 'action of assumpsit', 'action of covenant',
-        'action of account', 'note payable', 'sealed note',
-        'security bond', 'collateral', 'forfeited recognizance',
-        'security given', 'forfeiture',
-        # Insurance
-        'insurance', 'insurer', 'insured', 'coverage', 'indemnity',
-        'underinsured motorist', 'bad faith insurance',
-        # Employment
-        'industrial commission', 'workers compensation',
-        "workers' compensation", 'workmen compensation',
-        "workmen's compensation", 'employment commission',
-        # Bankruptcy
-        'bankruptcy', 'chapter',
-        # Municipal / Administrative
-        'municipal', 'ordinance', 'zoning board', 'city council',
-        'municipality', 'police power', 'inverse condemnation', 'public works',
-        'mandamus', 'certiorari', 'administrative agency', 'agency review',
-        'licensing board', 'disbarment', 'professional license', 'tax commission',
-        # Equity / Chancery
-        'bill in chancery', 'suit in chancery', 'equity',
-        'scire facias', 'interpleader', 'garnishment', 'attachment', 'decree',
-        # Family
-        'divorce', 'custody', 'adoption', 'child support', 'paternity',
-        'maintenance', 'visitation', 'dissolution of marriage',
-        'separate maintenance',
-    )):
-        return 'Civil'
-
-    # ── Other ────────────────────────────────────────────────
-    return 'Other'
-
-
+# Labels are taken directly from source JSONL (sample['label']).
 # ============================================================
 #  PROCESSING
 # ============================================================
@@ -428,9 +262,6 @@ def load_and_process_data(total_lines):
                 stats['no_opinion'] += 1
                 continue
 
-            court_name = (sample.get('court', {}) or {}).get('name', '') or ''
-            court_abbr = (sample.get('court', {}) or {}).get('name_abbreviation', '') or ''
-
             # Extract opinion body (skip header)
             opinion_body = extract_opinion_body(opinion_raw)
 
@@ -446,9 +277,11 @@ def load_and_process_data(total_lines):
                 stats['empty_after_clean'] += 1
                 continue
 
-            # Classification
-            op_lc = opinion_raw.lower()  # raw for keyword matching
-            label = get_label(name, court_name, court_abbr, hm_raw, op_lc)
+            # Use ORIGINAL source label (no relabeling)
+            label = str(sample.get('label', '') or '').strip()
+            if not label:
+                stats['missing_label'] += 1
+                continue
             stats[label] += 1
 
             # Confidence: metadata = high, well-sourced opinion = medium, Other = low
